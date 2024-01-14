@@ -9,12 +9,29 @@ namespace NeovimEditor.Editor {
     public class NeovimCodeEditor : IExternalCodeEditor {
         public static string CurrentEditor => EditorPrefs.GetString("kScriptsDefaultApp");
 
-        public CodeEditor.Installation[] Installations => new CodeEditor.Installation[] { new CodeEditor.Installation { Name = "Neovim", Path = "/usr/local/bin/nvim" } };
+        private IGenerator _projectGenerator;
+        private NeovimFileWatcher _fileWatcher;
 
-        private ProjectGeneration.IGenerator _projectGenerator;
+        public CodeEditor.Installation[] Installations => GetNeovimPath();
+
+        private CodeEditor.Installation[] GetNeovimPath() {
+            if(Integration.NvimIntegration.GetNvimExecutablePath(out var nvimPath)) {
+                return new CodeEditor.Installation[] { new() { Name = "nvim", Path = nvimPath}};
+            } else {
+                Debug.LogError("nvim executable not found in path, integration will not function properly.");
+                return new CodeEditor.Installation[] { new() { Name = "!nvim not found", Path = "/bin/sh"}};
+            }
+        }
 
         public NeovimCodeEditor() {
+            _fileWatcher = new NeovimFileWatcher();
+            _fileWatcher.FilesModified += FilesModified;
+
             _projectGenerator = new ProjectGeneration.ProjectGeneration();
+        }
+
+        private void FilesModified(string[] files) {
+            AssetDatabase.Refresh();
         }
 
         public void Initialize(string editorInstallationPath) {
@@ -73,13 +90,9 @@ namespace NeovimEditor.Editor {
             return true;
         }
 
-        private string GetSolutionFile(string path) {
+        private string GetSolutionFile(string _) {
             var solutionFile = _projectGenerator.SolutionFile();
-            if (File.Exists(solutionFile)) {
-                return solutionFile;
-            }
-
-            return "";
+            return File.Exists(solutionFile) ? solutionFile : "";
         }
 
         public void SyncAll() {
@@ -89,19 +102,31 @@ namespace NeovimEditor.Editor {
         public void SyncIfNeeded(string[] addedFiles, string[] deletedFiles, string[] movedFiles, string[] movedFromFiles, string[] importedFiles) {
             var files = new List<string>();
             foreach (var file in addedFiles) {
-                if (files.Contains(file)) continue;
+                if (files.Contains(file)) {
+                    continue;
+                }
+
                 files.Add(file);
             }
             foreach (var file in deletedFiles) {
-                if (files.Contains(file)) continue;
+                if (files.Contains(file)) {
+                    continue;
+                }
+
                 files.Add(file);
             }
             foreach (var file in movedFiles) {
-                if (files.Contains(file)) continue;
+                if (files.Contains(file)) {
+                    continue;
+                }
+
                 files.Add(file);
             }
             foreach (var file in movedFromFiles) {
-                if (files.Contains(file)) continue;
+                if (files.Contains(file)) {
+                    continue;
+                }
+
                 files.Add(file);
             }
             if (_projectGenerator.SyncIfNeeded(files, importedFiles)) {
@@ -111,20 +136,12 @@ namespace NeovimEditor.Editor {
         }
 
         public bool TryGetInstallationForPath(string editorPath, out CodeEditor.Installation installation) {
-            var res = Integration.NvimIntegration.GetNvimExecutablePath(out var nvimPath);
-            if (!res) {
-                UnityEngine.Debug.LogError("nvim executable not found in path, integration will not function properly.");
-                installation = new CodeEditor.Installation() {
-                    Name = "!nvim not found",
-                    Path = "/bin/nvim"
-                };
-                return false;
-            } else {
-                installation = new CodeEditor.Installation() {
-                    Name = "nvim",
-                    Path = nvimPath
-                };
+            if(Integration.NvimIntegration.GetNvimExecutablePath(out var nvimPath)) {
+                installation = new() { Name = "nvim", Path = nvimPath};
                 return true;
+            } else {
+                installation = new() {};
+                return false;
             }
         }
     }
