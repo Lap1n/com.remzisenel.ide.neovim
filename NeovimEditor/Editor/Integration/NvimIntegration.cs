@@ -1,7 +1,7 @@
 namespace NeovimEditor.Editor.Integration {
     public static class NvimIntegration {
         public static bool GetNvimExecutablePath(out string nvimExecutablePath) {
-            UnityEngine.Debug.Log("<color=\"grey\">NvimIntegration.GetNvimExecutablePath</color>");
+            // UnityEngine.Debug.Log("<color=\"grey\">NvimIntegration.GetNvimExecutablePath</color>");
             var res = CmdRunner.Run("which", "nvim", ".");
             if (res.ExitCode != 0) {
                 UnityEngine.Debug.Log("<color=\"red\">Error in GetNvimExecutablePath: " + res.StandardOutput + "</color>");
